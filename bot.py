@@ -58,8 +58,8 @@ async def start(message: Message):
     await message.answer(
         f"""Добро пожаловать!
 
-🏆 Очки: {points}
-📋 Незакрытых задач: {tasks}""",
+Очки: {points}
+Незакрытых задач: {tasks}""",
         reply_markup=keyboard
     )
 
@@ -72,8 +72,8 @@ async def stats(message: Message):
     await message.answer(
         f"""📊 Статистика
 
-🏆 Очки: {points}
-📋 Незакрытых задач: {tasks}"""
+Очки: {points}
+Незакрытых задач: {tasks}"""
     )
 
 
@@ -96,8 +96,8 @@ async def add_task(message: Message):
     await message.answer(
         f"""Добавлен новый таск.
 
-🏆 Очки: {points}
-📋 Тасков: {tasks}"""
+Очки: {points}
+Тасков: {tasks}"""
     )
 
 
@@ -120,8 +120,8 @@ async def done_task(message: Message):
     await message.answer(
         f"""Таск закрыт.
 
-🏆 Очки: {points}
-📋 Тасков: {tasks}"""
+Очки: {points}
+Тасков: {tasks}"""
     )
 
 
@@ -133,8 +133,8 @@ async def new_day(message: Message):
     await message.answer(
         f"""Если наступил новый день, штраф уже применён автоматически.
 
-🏆 Очки: {points}
-📋 Тасков: {tasks}"""
+Очки: {points}
+Тасков: {tasks}"""
     )
 
 
