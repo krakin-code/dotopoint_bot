@@ -1,51 +1,23 @@
+import asyncio
+
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import (
+    Message,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+)
 
 from config import TOKEN
+from database import get_user, save_user
+from operations import (
+    check_new_day,
+    new_task,
+    close_task,
+)
 
 bot = Bot(TOKEN)
 dp = Dispatcher()
-
-
-class Oper:
-    def __init__(self, res, tasks):
-        self.res = res
-        self.tasks = tasks
-
-    def new_task(self):
-        self.res += 20
-        self.tasks += 1
-
-    def close_task(self):
-        self.res += 100
-        if self.tasks > 0:
-            self.tasks -= 1
-
-    def new_day(self):
-        self.res -= 50 * self.tasks
-
-
-def load_data():
-    try:
-        with open("data.txt", "r") as file:
-            text = file.read().strip()
-
-            if text:
-                res, tasks = map(int, text.split())
-                return Oper(res, tasks)
-    except FileNotFoundError:
-        pass
-
-    return Oper(100, 0)
-
-
-def save_data():
-    with open("data.txt", "w") as file:
-        file.write(f"{oper.res} {oper.tasks}")
-
-
-oper = load_data()
 
 keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -58,60 +30,111 @@ keyboard = ReplyKeyboardMarkup(
 )
 
 
+def load_actual(user_id):
+
+    points, tasks, last_day = get_user(user_id)
+
+    points, tasks, last_day = check_new_day(
+        points,
+        tasks,
+        last_day
+    )
+
+    save_user(
+        user_id,
+        points,
+        tasks,
+        last_day
+    )
+
+    return points, tasks, last_day
+
+
 @dp.message(CommandStart())
 async def start(message: Message):
+
+    points, tasks, _ = load_actual(message.from_user.id)
+
     await message.answer(
         f"""Добро пожаловать!
 
-🏆 Очки: {oper.res}
-📋 Незакрытые задачи: {oper.tasks}""",
+🏆 Очки: {points}
+📋 Незакрытых задач: {tasks}""",
         reply_markup=keyboard
-    )
-
-
-@dp.message(F.text == "➕ Новый таск")
-async def new_task(message: Message):
-    oper.new_task()
-    save_data()
-
-    await message.answer(
-        f"Добавлен новый таск.\n\n"
-        f"🏆 Очки: {oper.res}\n"
-        f"📋 Тасков: {oper.tasks}"
-    )
-
-
-@dp.message(F.text == "✅ Закрыть таск")
-async def close_task(message: Message):
-    oper.close_task()
-    save_data()
-
-    await message.answer(
-        f"Таск закрыт.\n\n"
-        f"🏆 Очки: {oper.res}\n"
-        f"📋 Тасков: {oper.tasks}"
-    )
-
-
-@dp.message(F.text == "📅 Новый день")
-async def new_day(message: Message):
-    oper.new_day()
-    save_data()
-
-    await message.answer(
-        f"Наступил новый день.\n\n"
-        f"🏆 Очки: {oper.res}\n"
-        f"📋 Тасков: {oper.tasks}"
     )
 
 
 @dp.message(F.text == "📊 Статистика")
 async def stats(message: Message):
+
+    points, tasks, _ = load_actual(message.from_user.id)
+
     await message.answer(
         f"""📊 Статистика
 
-🏆 Очки: {oper.res}
-📋 Незакрытые задачи: {oper.tasks}"""
+🏆 Очки: {points}
+📋 Незакрытых задач: {tasks}"""
+    )
+
+
+@dp.message(F.text == "➕ Новый таск")
+async def add_task(message: Message):
+
+    user_id = message.from_user.id
+
+    points, tasks, last_day = load_actual(user_id)
+
+    points, tasks = new_task(points, tasks)
+
+    save_user(
+        user_id,
+        points,
+        tasks,
+        last_day
+    )
+
+    await message.answer(
+        f"""Добавлен новый таск.
+
+🏆 Очки: {points}
+📋 Тасков: {tasks}"""
+    )
+
+
+@dp.message(F.text == "✅ Закрыть таск")
+async def done_task(message: Message):
+
+    user_id = message.from_user.id
+
+    points, tasks, last_day = load_actual(user_id)
+
+    points, tasks = close_task(points, tasks)
+
+    save_user(
+        user_id,
+        points,
+        tasks,
+        last_day
+    )
+
+    await message.answer(
+        f"""Таск закрыт.
+
+🏆 Очки: {points}
+📋 Тасков: {tasks}"""
+    )
+
+
+@dp.message(F.text == "📅 Новый день")
+async def new_day(message: Message):
+
+    points, tasks, _ = load_actual(message.from_user.id)
+
+    await message.answer(
+        f"""Если наступил новый день, штраф уже применён автоматически.
+
+🏆 Очки: {points}
+📋 Тасков: {tasks}"""
     )
 
 
@@ -120,6 +143,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(main())
