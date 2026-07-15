@@ -1,86 +1,125 @@
-#
-# class Oper:
-#     def __init__(self, res, tasks):
-#         self.res = res
-#         self.tasks = tasks
-#     def new_task(self):
-#         self.res += 20
-#         self.tasks += 1
-#         return self.res, self.tasks
-#     def close_task(self):
-#         self.res += 100
-#         self.tasks -= 1
-#         return self.res, self.tasks
-#     def new_day(self):
-#         self.res -= 50 * self.tasks
-#         return self.res
-#
-#
-# def main():
-#     try:
-#         file = open('todo_res.txt', 'r+')
-#         file_data = file.read()
-#
-#         if len(file_data) > 0:
-#             act_day = file_data.split('\n')[-1]
-#             res, tasks = act_day.split(' ')
-#
-#
-#         else:
-#             print('К сожалению ваш файл с данными пуст. Давайте восполним пробелы.')
-#             res = input('Введите начально количество очков (рекомендуем - 100):')
-#             tasks = input('Введите количество незакрытых тасков:')
-#             act_day = res + ' ' + tasks
-#             file.write(act_day)
-#
-#
-#
-#     except FileNotFoundError:
-#         res = input('Упс! Похоже вы в первый раз запускаете программу.\nНужно ввести начальное значение очков:')
-#         tasks = input('Ещё нам нужно ваше количество незакрытых тасков:')
-#         with open('todo_res.txt', 'w') as file:
-#             act_day = res + ' ' + tasks
-#             file.write(act_day)
-#
-#     res = int(res)
-#     tasks = int(tasks)
-#     start_day_res = res
-#     start_day_tasks = tasks
-#     point_operation = Oper(res, tasks)
-#
-#     while True:
-#         print(f'Ваши очки: {res} \nНезакрытые таски: {tasks}\n')
-#         do = int(input('Выберите действие:\n1 - новый таск\n2 - закрыть таск\n3 - новый день\n4 - выход\n'))
-#         if do == 1:
-#             res, tasks = point_operation.new_task()
-#         if do == 2:
-#             res, tasks = point_operation.close_task()
-#         if do == 3:
-#             res = point_operation.new_day()
-#         if do == 4:
-#
-#             file.write('\n')
-#             file.write(str(res) + ' ' + str(tasks))
-#             print(f'За сегодня вы получили {res - start_day_res} очков и закрыли {tasks - start_day_tasks} задач')
-#             exit()
-#         print('\n')
-#
-#
-#
-# if __name__ == '__main__':
-#     main()
+from aiogram import Bot, Dispatcher, F
+from aiogram.filters import CommandStart
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 
-from aiogram import Bot, Dispatcher
-import asyncio
+from config import TOKEN
 
-bot = Bot("8789607041:AAFsJJ0ilmZMHa4m-hkmJjpvVqYM1Qas52w")
+bot = Bot(TOKEN)
 dp = Dispatcher()
 
-@dp.message()
-async def echo(message):
-    await message.answer(message.text)
+
+class Oper:
+    def __init__(self, res, tasks):
+        self.res = res
+        self.tasks = tasks
+
+    def new_task(self):
+        self.res += 20
+        self.tasks += 1
+
+    def close_task(self):
+        self.res += 100
+        if self.tasks > 0:
+            self.tasks -= 1
+
+    def new_day(self):
+        self.res -= 50 * self.tasks
+
+
+def load_data():
+    try:
+        with open("data.txt", "r") as file:
+            text = file.read().strip()
+
+            if text:
+                res, tasks = map(int, text.split())
+                return Oper(res, tasks)
+    except FileNotFoundError:
+        pass
+
+    return Oper(100, 0)
+
+
+def save_data():
+    with open("data.txt", "w") as file:
+        file.write(f"{oper.res} {oper.tasks}")
+
+
+oper = load_data()
+
+keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="➕ Новый таск")],
+        [KeyboardButton(text="✅ Закрыть таск")],
+        [KeyboardButton(text="📅 Новый день")],
+        [KeyboardButton(text="📊 Статистика")]
+    ],
+    resize_keyboard=True
+)
+
+
+@dp.message(CommandStart())
+async def start(message: Message):
+    await message.answer(
+        f"""Добро пожаловать!
+
+🏆 Очки: {oper.res}
+📋 Незакрытые задачи: {oper.tasks}""",
+        reply_markup=keyboard
+    )
+
+
+@dp.message(F.text == "➕ Новый таск")
+async def new_task(message: Message):
+    oper.new_task()
+    save_data()
+
+    await message.answer(
+        f"Добавлен новый таск.\n\n"
+        f"🏆 Очки: {oper.res}\n"
+        f"📋 Тасков: {oper.tasks}"
+    )
+
+
+@dp.message(F.text == "✅ Закрыть таск")
+async def close_task(message: Message):
+    oper.close_task()
+    save_data()
+
+    await message.answer(
+        f"Таск закрыт.\n\n"
+        f"🏆 Очки: {oper.res}\n"
+        f"📋 Тасков: {oper.tasks}"
+    )
+
+
+@dp.message(F.text == "📅 Новый день")
+async def new_day(message: Message):
+    oper.new_day()
+    save_data()
+
+    await message.answer(
+        f"Наступил новый день.\n\n"
+        f"🏆 Очки: {oper.res}\n"
+        f"📋 Тасков: {oper.tasks}"
+    )
+
+
+@dp.message(F.text == "📊 Статистика")
+async def stats(message: Message):
+    await message.answer(
+        f"""📊 Статистика
+
+🏆 Очки: {oper.res}
+📋 Незакрытые задачи: {oper.tasks}"""
+    )
+
 
 async def main():
     await dp.start_polling(bot)
 
-asyncio.run(main())
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(main())
