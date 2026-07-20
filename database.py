@@ -8,7 +8,8 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS users(
     user_id INTEGER PRIMARY KEY,
     points INTEGER,
-    last_day TEXT
+    last_day TEXT,
+    notifications_enabled INTEGER DEFAULT 1
 )
 """)
 
@@ -37,8 +38,8 @@ def get_user(user_id):
     if user is None:
 
         cursor.execute(
-            "INSERT INTO users VALUES(?,?,?)",
-            (user_id, DEFAULT_POINTS, date.today().isoformat())
+            "INSERT INTO users(user_id, points, last_day, notifications_enabled) VALUES(?,?,?,?)",
+            (user_id, DEFAULT_POINTS, date.today().isoformat(), 1)
         )
 
         db.commit()
@@ -99,3 +100,31 @@ def delete_task(task_id):
         (task_id,)
     )
     db.commit()
+
+
+def get_notifications_enabled(user_id):
+    cursor.execute(
+        "SELECT notifications_enabled FROM users WHERE user_id=?",
+        (user_id,)
+    )
+    row = cursor.fetchone()
+    if row is None or row[0] is None:
+        return True
+    return bool(row[0])
+
+
+def toggle_notifications(user_id):
+    new_value = 0 if get_notifications_enabled(user_id) else 1
+    cursor.execute(
+        "UPDATE users SET notifications_enabled=? WHERE user_id=?",
+        (new_value, user_id)
+    )
+    db.commit()
+    return bool(new_value)
+
+
+def get_users_with_notifications_enabled():
+    cursor.execute(
+        "SELECT user_id FROM users WHERE notifications_enabled=1"
+    )
+    return [row[0] for row in cursor.fetchall()]
