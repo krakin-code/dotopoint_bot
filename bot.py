@@ -41,7 +41,7 @@ bot = Bot(TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
 # Фиксированное время рассылки уведомлений
-NOTIFY_TIMES = [time(10, 0), time(16, 0), time(22, 0)]
+NOTIFY_TIMES = [time(7, 0), time(13, 0), time(19, 0)]
 
 
 class TaskForm(StatesGroup):
@@ -86,7 +86,7 @@ def build_settings_text(user_id):
     points, _, _ = load_actual(user_id)
     return f"""Настройки:
 Твои очки: {points}
-Уведомления приходят в 10:00, 16:00, 22:00"""
+Уведомления приходят в 10:00, 16:00, 22:00 по мск"""
 
 
 @dp.message(CommandStart())
