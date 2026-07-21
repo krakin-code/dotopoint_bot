@@ -59,6 +59,15 @@ keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
+# Тексты кнопок меню — если во время ввода названия таска пользователь
+# нажмёт одну из них, это не должно восприниматься как название задачи
+MENU_BUTTON_TEXTS = {
+    "➕ Новый таск",
+    "✅ Закрыть таск",
+    "📊 Таски\Статистика",
+    "⚙️ Настройки",
+}
+
 
 def load_actual(user_id):
     points, last_day = get_user(user_id)
@@ -101,7 +110,8 @@ async def start(message: Message):
 
 
 @dp.message(F.text == "📊 Таски\Статистика")
-async def stats(message: Message):
+async def stats(message: Message, state: FSMContext):
+    await state.clear()
     user_id = message.from_user.id
     points, tasks, _ = load_actual(user_id)
 
@@ -124,7 +134,7 @@ async def add_task_start(message: Message, state: FSMContext):
     await state.set_state(TaskForm.waiting_for_task_name)
 
 
-@dp.message(TaskForm.waiting_for_task_name)
+@dp.message(TaskForm.waiting_for_task_name, ~F.text.in_(MENU_BUTTON_TEXTS))
 async def add_task_finish(message: Message, state: FSMContext):
     user_id = message.from_user.id
     text = message.text.strip()
@@ -146,7 +156,8 @@ async def add_task_finish(message: Message, state: FSMContext):
 
 
 @dp.message(F.text == "✅ Закрыть таск")
-async def close_task_list(message: Message):
+async def close_task_list(message: Message, state: FSMContext):
+    await state.clear()
     user_id = message.from_user.id
     load_actual(user_id)
     tasks = get_tasks(user_id)
@@ -195,7 +206,8 @@ async def close_task_callback(callback: CallbackQuery):
 
 
 @dp.message(F.text == "⚙️ Настройки")
-async def settings_menu(message: Message):
+async def settings_menu(message: Message, state: FSMContext):
+    await state.clear()
     user_id = message.from_user.id
     await message.answer(
         build_settings_text(user_id),
